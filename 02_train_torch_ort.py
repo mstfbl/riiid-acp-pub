@@ -635,16 +635,6 @@ tag_emb_szs = meta.tags_n_emb, meta.tags_emb_dim
 model = TutorNet(emb_szs, tag_emb_szs, None, len(meta.cont_names), 
                  H.trf_dim, H.trf_enc, H.trf_dec, H.trf_heads, H.trf_do, H.trf_act)
 
-
-# # Add Torch ORT Step
-
-# In[ ]:
-
-
-from torch_ort import ORTModule
-model = ORTModule(model)
-
-
 # # T-Fixup init
 # 
 # 1. Apply Xavier initialization for all parameters excluding input embeddings. Use Gaussian initialization $N(0,d^{-\frac{1}{2}})$ for input embeddings where d is the embedding dimension.
@@ -690,7 +680,6 @@ if H.tfixup:
     mp = MyModelPatcher()
     mp.add_pattern(r".*norm\d?.*",{})
     mp.patch_model(model)
-
 
 # In[ ]:
 
@@ -764,6 +753,13 @@ def load(learn:Learner,fn,with_opt=False):
         return learn
     return rank0_only(__inner, learn, fn, with_opt)
 
+# # Add Torch ORT Step
+
+# In[ ]:
+
+
+from torch_ort import ORTModule
+model = ORTModule(model)
 
 # # Load model
 
