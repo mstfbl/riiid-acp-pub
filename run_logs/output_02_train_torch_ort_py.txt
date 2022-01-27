@@ -1,0 +1,245 @@
+/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/distributed/launch.py:178: FutureWarning: The module torch.distributed.launch is deprecated
+and will be removed in future. Use torch.distributed.run.
+Note that --use_env is set by default in torch.distributed.run.
+If your script expects `--local_rank` argument to be set, please
+change it to read from `os.environ['LOCAL_RANK']` instead. See 
+https://pytorch.org/docs/stable/distributed.html#launch-utility for 
+further instructions
+
+  warnings.warn(
+WARNING:torch.distributed.run:*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+{'model': '210105', 'data': '210101b', 'load': None, 'validate': False, 'chunk_size': 500, 'n_chunks': 1, 'bs': 16, 'workers': 8, 'valid_pct': 0.025, 'trf_dim': 512, 'trf_enc': 4, 'trf_dec': 4, 'trf_heads': 4, 'trf_do': 0.1, 'trf_act': 'gelu', 'lr': 0.003, 'clip': 0.0, 'moms': (0.95, 0.85, 0.95), 'epochs': 15, 'tfixup': True, 'mixup': False, 'opt': 'ranger_lamb', 'opt_kwargs': {}, 'fit': 'fit_flat_cos', 'fit_kwargs': {'pct_start': 0.5, 'div_final': 100.0}, 'fp16': 'to_fp16', 'loss': 'ce', 'wua': 0.0, 'pad': 'r', 'local_rank': 0}
+{'model': '210105', 'data': '210101b', 'load': None, 'validate': False, 'chunk_size': 500, 'n_chunks': 1, 'bs': 16, 'workers': 8, 'valid_pct': 0.025, 'trf_dim': 512, 'trf_enc': 4, 'trf_dec': 4, 'trf_heads': 4, 'trf_do': 0.1, 'trf_act': 'gelu', 'lr': 0.003, 'clip': 0.0, 'moms': (0.95, 0.85, 0.95), 'epochs': 15, 'tfixup': True, 'mixup': False, 'opt': 'ranger_lamb', 'opt_kwargs': {}, 'fit': 'fit_flat_cos', 'fit_kwargs': {'pct_start': 0.5, 'div_final': 100.0}, 'fp16': 'to_fp16', 'loss': 'ce', 'wua': 0.0, 'pad': 'r', 'local_rank': 1}
+{'model': '210105', 'data': '210101b', 'load': None, 'validate': False, 'chunk_size': 500, 'n_chunks': 1, 'bs': 16, 'workers': 8, 'valid_pct': 0.025, 'trf_dim': 512, 'trf_enc': 4, 'trf_dec': 4, 'trf_heads': 4, 'trf_do': 0.1, 'trf_act': 'gelu', 'lr': 0.003, 'clip': 0.0, 'moms': (0.95, 0.85, 0.95), 'epochs': 15, 'tfixup': True, 'mixup': False, 'opt': 'ranger_lamb', 'opt_kwargs': {}, 'fit': 'fit_flat_cos', 'fit_kwargs': {'pct_start': 0.5, 'div_final': 100.0}, 'fp16': 'to_fp16', 'loss': 'ce', 'wua': 0.0, 'pad': 'r', 'local_rank': 2}
+{'model': '210105', 'data': '210101b', 'load': None, 'validate': False, 'chunk_size': 500, 'n_chunks': 1, 'bs': 16, 'workers': 8, 'valid_pct': 0.025, 'trf_dim': 512, 'trf_enc': 4, 'trf_dec': 4, 'trf_heads': 4, 'trf_do': 0.1, 'trf_act': 'gelu', 'lr': 0.003, 'clip': 0.0, 'moms': (0.95, 0.85, 0.95), 'epochs': 15, 'tfixup': True, 'mixup': False, 'opt': 'ranger_lamb', 'opt_kwargs': {}, 'fit': 'fit_flat_cos', 'fit_kwargs': {'pct_start': 0.5, 'div_final': 100.0}, 'fp16': 'to_fp16', 'loss': 'ce', 'wua': 0.0, 'pad': 'r', 'local_rank': 3}
+DISTRIBUTED: 0
+DISTRIBUTED: 3
+DISTRIBUTED: 1
+DISTRIBUTED: 2
+There are 393656 different users
+users: train=383814, valid=9842
+There are 393656 different users
+users: train=383814, valid=9842
+There are 393656 different users
+users: train=383814, valid=9842
+seqs: train=507050, valid=12914
+02_train_torch_ort.py:295: DeprecationWarning: `np.bool` is a deprecated alias for the builtin `bool`. To silence this warning, use `bool` by itself. Doing this will not modify any behavior and is safe. If you specifically wanted the numpy scalar type, use `np.bool_` here.
+Deprecated in NumPy 1.20; for more details and guidance: https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations
+  x_mask = np.zeros(x_cat.shape[0], dtype=np.bool)
+seqs: train=507050, valid=12914
+seqs: train=507050, valid=12914
+02_train_torch_ort.py:295: DeprecationWarning: `np.bool` is a deprecated alias for the builtin `bool`. To silence this warning, use `bool` by itself. Doing this will not modify any behavior and is safe. If you specifically wanted the numpy scalar type, use `np.bool_` here.
+Deprecated in NumPy 1.20; for more details and guidance: https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations
+  x_mask = np.zeros(x_cat.shape[0], dtype=np.bool)
+02_train_torch_ort.py:295: DeprecationWarning: `np.bool` is a deprecated alias for the builtin `bool`. To silence this warning, use `bool` by itself. Doing this will not modify any behavior and is safe. If you specifically wanted the numpy scalar type, use `np.bool_` here.
+Deprecated in NumPy 1.20; for more details and guidance: https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations
+  x_mask = np.zeros(x_cat.shape[0], dtype=np.bool)
+There are 393656 different users
+users: train=383814, valid=9842
+seqs: train=507050, valid=12914
+02_train_torch_ort.py:295: DeprecationWarning: `np.bool` is a deprecated alias for the builtin `bool`. To silence this warning, use `bool` by itself. Doing this will not modify any behavior and is safe. If you specifically wanted the numpy scalar type, use `np.bool_` here.
+Deprecated in NumPy 1.20; for more details and guidance: https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations
+  x_mask = np.zeros(x_cat.shape[0], dtype=np.bool)
+local_rank on
+fit_flat_cos 15 0.003 {'pct_start': 0.5, 'div_final': 100.0}
+Fitting 0
+NotImplementedError: ORTModule does not support adding modules to it.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "02_train_torch_ort.py", line 829, in <module>
+    getattr(learn,H.fit)(H.epochs, H.lr,**H.fit_kwargs)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/callback/schedule.py", line 139, in fit_flat_cos
+    self.fit(n_epoch, cbs=ParamScheduler(scheds)+L(cbs), reset_opt=reset_opt, wd=wd)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 221, in fit
+    self._with_events(self._do_fit, 'fit', CancelFitException, self._end_cleanup)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 163, in _with_events
+    try: self(f'before_{event_type}');  f()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 141, in __call__
+    def __call__(self, event_name): L(event_name).map(self._call_one)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/foundation.py", line 155, in map
+    def map(self, f, *args, gen=False, **kwargs): return self._new(map_ex(self, f, *args, gen=gen, **kwargs))
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/basics.py", line 698, in map_ex
+    return list(res)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/basics.py", line 683, in __call__
+    return self.func(*fargs, **kwargs)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 145, in _call_one
+    for cb in self.cbs.sorted('order'): cb(event_name)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/callback/core.py", line 45, in __call__
+    if self.run and _run: res = getattr(self, event_name, noop)()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/distributed.py", line 131, in before_fit
+    nn.SyncBatchNorm.convert_sync_batchnorm(self.model) if self.sync_bn else self.model,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/nn/modules/batchnorm.py", line 815, in convert_sync_batchnorm
+    module_output.add_module(
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/ortmodule.py", line 174, in add_module
+    self._torch_module.add_module(name, module)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/_torch_module_ort.py", line 161, in add_module
+    raise wrap_exception(ORTModuleTorchModelException,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/_fallback.py", line 226, in wrap_exception
+    raise new_exception(raised_exception) from raised_exception
+onnxruntime.training.ortmodule._fallback.ORTModuleTorchModelException: ORTModule does not support adding modules to it.
+local_rank on
+fit_flat_cos 15 0.003 {'pct_start': 0.5, 'div_final': 100.0}
+Fitting 2
+NotImplementedError: ORTModule does not support adding modules to it.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "02_train_torch_ort.py", line 829, in <module>
+    getattr(learn,H.fit)(H.epochs, H.lr,**H.fit_kwargs)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/callback/schedule.py", line 139, in fit_flat_cos
+    self.fit(n_epoch, cbs=ParamScheduler(scheds)+L(cbs), reset_opt=reset_opt, wd=wd)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 221, in fit
+    self._with_events(self._do_fit, 'fit', CancelFitException, self._end_cleanup)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 163, in _with_events
+    try: self(f'before_{event_type}');  f()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 141, in __call__
+    def __call__(self, event_name): L(event_name).map(self._call_one)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/foundation.py", line 155, in map
+    def map(self, f, *args, gen=False, **kwargs): return self._new(map_ex(self, f, *args, gen=gen, **kwargs))
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/basics.py", line 698, in map_ex
+    return list(res)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/basics.py", line 683, in __call__
+    return self.func(*fargs, **kwargs)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 145, in _call_one
+    for cb in self.cbs.sorted('order'): cb(event_name)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/callback/core.py", line 45, in __call__
+    if self.run and _run: res = getattr(self, event_name, noop)()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/distributed.py", line 131, in before_fit
+    nn.SyncBatchNorm.convert_sync_batchnorm(self.model) if self.sync_bn else self.model,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/nn/modules/batchnorm.py", line 815, in convert_sync_batchnorm
+    module_output.add_module(
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/ortmodule.py", line 174, in add_module
+    self._torch_module.add_module(name, module)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/_torch_module_ort.py", line 161, in add_module
+    raise wrap_exception(ORTModuleTorchModelException,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/_fallback.py", line 226, in wrap_exception
+    raise new_exception(raised_exception) from raised_exception
+onnxruntime.training.ortmodule._fallback.ORTModuleTorchModelException: ORTModule does not support adding modules to it.
+local_rank on
+fit_flat_cos 15 0.003 {'pct_start': 0.5, 'div_final': 100.0}
+Fitting 1
+NotImplementedError: ORTModule does not support adding modules to it.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "02_train_torch_ort.py", line 829, in <module>
+    getattr(learn,H.fit)(H.epochs, H.lr,**H.fit_kwargs)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/callback/schedule.py", line 139, in fit_flat_cos
+    self.fit(n_epoch, cbs=ParamScheduler(scheds)+L(cbs), reset_opt=reset_opt, wd=wd)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 221, in fit
+    self._with_events(self._do_fit, 'fit', CancelFitException, self._end_cleanup)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 163, in _with_events
+    try: self(f'before_{event_type}');  f()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 141, in __call__
+    def __call__(self, event_name): L(event_name).map(self._call_one)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/foundation.py", line 155, in map
+    def map(self, f, *args, gen=False, **kwargs): return self._new(map_ex(self, f, *args, gen=gen, **kwargs))
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/basics.py", line 698, in map_ex
+    return list(res)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/basics.py", line 683, in __call__
+    return self.func(*fargs, **kwargs)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 145, in _call_one
+    for cb in self.cbs.sorted('order'): cb(event_name)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/callback/core.py", line 45, in __call__
+    if self.run and _run: res = getattr(self, event_name, noop)()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/distributed.py", line 131, in before_fit
+    nn.SyncBatchNorm.convert_sync_batchnorm(self.model) if self.sync_bn else self.model,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/nn/modules/batchnorm.py", line 815, in convert_sync_batchnorm
+    module_output.add_module(
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/ortmodule.py", line 174, in add_module
+    self._torch_module.add_module(name, module)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/_torch_module_ort.py", line 161, in add_module
+    raise wrap_exception(ORTModuleTorchModelException,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/_fallback.py", line 226, in wrap_exception
+    raise new_exception(raised_exception) from raised_exception
+onnxruntime.training.ortmodule._fallback.ORTModuleTorchModelException: ORTModule does not support adding modules to it.
+local_rank on
+fit_flat_cos 15 0.003 {'pct_start': 0.5, 'div_final': 100.0}
+Fitting 3
+NotImplementedError: ORTModule does not support adding modules to it.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "02_train_torch_ort.py", line 829, in <module>
+    getattr(learn,H.fit)(H.epochs, H.lr,**H.fit_kwargs)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/callback/schedule.py", line 139, in fit_flat_cos
+    self.fit(n_epoch, cbs=ParamScheduler(scheds)+L(cbs), reset_opt=reset_opt, wd=wd)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 221, in fit
+    self._with_events(self._do_fit, 'fit', CancelFitException, self._end_cleanup)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 163, in _with_events
+    try: self(f'before_{event_type}');  f()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 141, in __call__
+    def __call__(self, event_name): L(event_name).map(self._call_one)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/foundation.py", line 155, in map
+    def map(self, f, *args, gen=False, **kwargs): return self._new(map_ex(self, f, *args, gen=gen, **kwargs))
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/basics.py", line 698, in map_ex
+    return list(res)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastcore/basics.py", line 683, in __call__
+    return self.func(*fargs, **kwargs)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/learner.py", line 145, in _call_one
+    for cb in self.cbs.sorted('order'): cb(event_name)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/callback/core.py", line 45, in __call__
+    if self.run and _run: res = getattr(self, event_name, noop)()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/fastai/distributed.py", line 131, in before_fit
+    nn.SyncBatchNorm.convert_sync_batchnorm(self.model) if self.sync_bn else self.model,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/nn/modules/batchnorm.py", line 815, in convert_sync_batchnorm
+    module_output.add_module(
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/ortmodule.py", line 174, in add_module
+    self._torch_module.add_module(name, module)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/_torch_module_ort.py", line 161, in add_module
+    raise wrap_exception(ORTModuleTorchModelException,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/onnxruntime/training/ortmodule/_fallback.py", line 226, in wrap_exception
+    raise new_exception(raised_exception) from raised_exception
+onnxruntime.training.ortmodule._fallback.ORTModuleTorchModelException: ORTModule does not support adding modules to it.
+ERROR:torch.distributed.elastic.multiprocessing.api:failed (exitcode: 1) local_rank: 0 (pid: 47751) of binary: /home/azureuser/miniconda3/envs/riiid-py38-torch-191/bin/python
+Traceback (most recent call last):
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/distributed/launch.py", line 193, in <module>
+    main()
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/distributed/launch.py", line 189, in main
+    launch(args)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/distributed/launch.py", line 174, in launch
+    run(args)
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/distributed/run.py", line 689, in run
+    elastic_launch(
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/distributed/launcher/api.py", line 116, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/home/azureuser/miniconda3/envs/riiid-py38-torch-191/lib/python3.8/site-packages/torch/distributed/launcher/api.py", line 244, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+***************************************
+      02_train_torch_ort.py FAILED     
+=======================================
+Root Cause:
+[0]:
+  time: 2022-01-26_10:46:20
+  rank: 0 (local_rank: 0)
+  exitcode: 1 (pid: 47751)
+  error_file: <N/A>
+  msg: "Process failed with exitcode 1"
+=======================================
+Other Failures:
+[1]:
+  time: 2022-01-26_10:46:20
+  rank: 1 (local_rank: 1)
+  exitcode: 1 (pid: 47752)
+  error_file: <N/A>
+  msg: "Process failed with exitcode 1"
+[2]:
+  time: 2022-01-26_10:46:20
+  rank: 2 (local_rank: 2)
+  exitcode: 1 (pid: 47753)
+  error_file: <N/A>
+  msg: "Process failed with exitcode 1"
+***************************************
+

@@ -4,4 +4,7 @@
 /submission.csv
 /input
 /kaggle_dataset/to_upload
-/02_train.py
+
+*.pkl
+*.npy
+./*.zip
