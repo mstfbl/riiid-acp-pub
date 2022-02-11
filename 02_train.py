@@ -70,6 +70,7 @@ def main(
     epochs:        Param("Epochs", int) = 30,
     tfixup:        Param("Use T-Fixup init", ast.literal_eval) = True,
     mixup:         Param("Use mixup", ast.literal_eval) = False,
+    torch_ort:     Param("Use TorchORT", ast.literal_eval) = False,
     opt:           Param("Optimizer", str) = 'ranger_lamb',
     opt_kwargs:    Param("Optional args for opt, eg. eps=1e-4", str, nargs='+') = {},
     fit:           Param("fit or fit_one_cycle", str) = 'fit_flat_cos',
@@ -89,6 +90,7 @@ def main(
     globals().update({ 'H' : AttrDict(locals())})
 _H = AttrDict
 
+start_time = time.time()
 
 # In[5]:
 
@@ -749,6 +751,14 @@ def load(learn:Learner,fn,with_opt=False):
         return learn
     return rank0_only(__inner, learn, fn, with_opt)
 
+# # Add Torch ORT Step
+
+# In[ ]:
+
+if H.torch_ort:
+    from torch_ort import ORTModule
+    print("Encapsulating model with ORTModule")
+    model = ORTModule(model)
 
 # # Load model
 
@@ -816,6 +826,8 @@ getattr(learn,H.fit)(H.epochs, H.lr,**H.fit_kwargs)
 
 # In[ ]:
 
+elapsed_time = time.time() - start_time
 
+print(f'Elapsed time: {elapsed_time:5.2f}s')
 
 

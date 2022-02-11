@@ -29,6 +29,16 @@ from pathlib import Path
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 
+@call_parse
+def main(
+    torch_ort:     Param("Use TorchORT", ast.literal_eval) = False,
+): 
+    if opt_kwargs: opt_kwargs = {s.split('=')[0]:float(s.split('=')[1]) for s in opt_kwargs}
+    if fit_kwargs: fit_kwargs = {s.split('=')[0]:float(s.split('=')[1]) for s in fit_kwargs}
+    print(locals())
+    globals().update({ 'H' : AttrDict(locals())})
+_H = AttrDict
+
 # %%
 start_time = time.time()
 
@@ -347,6 +357,17 @@ class ModelPatcher:
 # %%
 model1 = TutorNet(emb_szs, tag_emb_szs, H1.emb_do, len(meta.cont_names), H1.trf_dim, H1.trf_enc, H1.trf_dec, H1.trf_heads, H1.trf_do, H1.trf_act)
 model2 = TutorNet(emb_szs, tag_emb_szs, H2.emb_do, len(meta.cont_names), H2.trf_dim, H2.trf_enc, H2.trf_dec, H2.trf_heads, H2.trf_do, H2.trf_act)
+
+# %%
+"""
+# Add Torch ORT Step
+"""
+
+# %%
+if H.torch_ort:
+    from torch_ort import ORTModule
+    model1 = ORTModule(model1)
+    model2 = ORTModule(model2)
 
 # %%
 def trunc_normal_(x, mean=0., std=1.):
