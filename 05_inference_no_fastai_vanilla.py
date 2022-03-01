@@ -13,10 +13,15 @@ ipynb-py-convert script.ipynb script.py
 """
 
 # %%
-from fastai.basics           import *
-from fastai.callback.all     import *
-from fastai.distributed      import *
-from fastai.tabular.all      import *
+# from fastai.basics           import *
+# from fastai.callback.all     import *
+# from fastai.distributed      import *
+# from fastai.tabular.all      import *
+from attrdict import AttrDict
+import numpy as np
+import torch
+import torch.nn as nn
+import re
 
 import enum
 import gc
@@ -29,14 +34,6 @@ from collections import defaultdict
 from pathlib import Path
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
-
-@call_parse
-def main(
-    torch_ort:     Param("Use TorchORT", ast.literal_eval) = False,
-): 
-    print(locals())
-    globals().update({ 'HParams' : AttrDict(locals())})
-_HParams = AttrDict
 
 start_time = time.time()
 
@@ -834,6 +831,16 @@ for test_df, pred_df in pbar:
                     else:
                         preds1 = model1(x_mask, x_cat, x_cont, x_tags, x_tagw)
                     batch_preds1 = torch.cat([batch_preds1, preds1])
+
+                    print("DEBUG")
+                    print("Size: x_mask, x_cat, x_cont, x_tags, x_tagw")
+                    print(x_mask.size(), x_cat.size(), x_cont.size(), x_tags.size(), x_tagw.size())
+                    print("Type: x_mask, x_cat, x_cont, x_tags, x_tagw")
+                    print(x_mask.type(), x_cat.type(), x_cont.type(), x_tags.type(), x_tagw.type())
+                    print("Size: preds")
+                    print(preds1.size())
+                    print("Type: preds")
+                    print(preds1.type())
 
                     if flag_ensemble:
                         preds2 = model2(x_mask, x_cat, x_cont, x_tags, x_tagw)

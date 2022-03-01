@@ -13,10 +13,15 @@ ipynb-py-convert script.ipynb script.py
 """
 
 # %%
-from fastai.basics           import *
-from fastai.callback.all     import *
-from fastai.distributed      import *
-from fastai.tabular.all      import *
+# from fastai.basics           import *
+# from fastai.callback.all     import *
+# from fastai.distributed      import *
+# from fastai.tabular.all      import *
+from attrdict import AttrDict
+import numpy as np
+import torch
+import torch.nn as nn
+import re
 
 import enum
 import gc
@@ -29,14 +34,6 @@ from collections import defaultdict
 from pathlib import Path
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
-
-@call_parse
-def main(
-    torch_ort:     Param("Use TorchORT", ast.literal_eval) = False,
-): 
-    print(locals())
-    globals().update({ 'HParams' : AttrDict(locals())})
-_HParams = AttrDict
 
 start_time = time.time()
 
@@ -248,6 +245,8 @@ class TutorNet(nn.Module):
         # print(enc_cont.shape)
         enc_cat  =  enc_cat.view(b * sl, catf)   # b*sl, catf
         enc_tags = enc_tags.view(b * sl, tagsf) # b*sl, tagsf
+        print("b, sl, tagsf")
+        print(b, sl, tagsf)
         enc_tagw = enc_tagw.view(b * sl, tagsf) # b*sl, tagsf
 
         dec_cat  =  dec_cat.view(b * sl, catf)   # b*sl, catf
@@ -731,8 +730,47 @@ if not KAGGLE:
             attempts_correct[encoded_val_user] = 0
 
 # %%
-model1 = model1.eval()
-model2 = model2.eval()
+"""
+Convert models to ONNX before inference
+"""
+
+# %%
+import torch.onnx
+print("tag_emb_szs", tag_emb_szs)
+def convert_model_to_onnx(model, name):
+    model.eval()
+    dummy_input = (
+        torch.zeros(50, 500, dtype=torch.bool).to(DEVICE), #x_mask
+        torch.zeros(50, 500, 11, dtype=torch.long).to(DEVICE), #x_cat
+        torch.zeros(50, 500, 23, dtype=torch.float).to(DEVICE), #x_cont
+        torch.zeros(50, 500, 6, dtype=torch.long).to(DEVICE), #x_tags
+        torch.zeros(50, 500, 23, dtype=torch.float).to(DEVICE) #x_tagw
+    )
+
+    torch.onnx.export(model,
+         dummy_input, 
+         f"{name}_exported.onnx",
+         export_params=True,  # store the trained parameter weights inside the model file 
+         opset_version=15, 
+         do_constant_folding=True,
+         input_names = ['x_mask, x_cat, x_cont, x_tags, x_tagw'],
+         output_names = ['preds'],
+         dynamic_axes={'x_mask' : [0], 'x_cat' : [0], 'x_cont' : [0], 'x_tags' : [0], 'x_tagw' : [0], 'preds': [0]}
+    ) 
+    print(" ") 
+    print('Model has been converted to ONNX') 
+convert_model_to_onnx(model1, "model1")
+convert_model_to_onnx(model2, "model2")
+
+# %%
+"""
+Load exported ONNX models before inference
+"""
+model1 = torch.onnx.load("model1_exported.onnx")
+model2 = torch.onnx.load("model2_exported.onnx")
+
+torch.onnx.checker.check_model(model1)
+torch.onnx.checker.check_model(model2)
 
 # %%
 n_read_rows = 0

@@ -13,10 +13,15 @@ ipynb-py-convert script.ipynb script.py
 """
 
 # %%
-from fastai.basics           import *
-from fastai.callback.all     import *
-from fastai.distributed      import *
-from fastai.tabular.all      import *
+# from fastai.basics           import *
+# from fastai.callback.all     import *
+# from fastai.distributed      import *
+# from fastai.tabular.all      import *
+from attrdict import AttrDict
+import numpy as np
+import torch
+import torch.nn as nn
+import re
 
 import enum
 import gc
@@ -29,14 +34,6 @@ from collections import defaultdict
 from pathlib import Path
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
-
-@call_parse
-def main(
-    torch_ort:     Param("Use TorchORT", ast.literal_eval) = False,
-): 
-    print(locals())
-    globals().update({ 'HParams' : AttrDict(locals())})
-_HParams = AttrDict
 
 start_time = time.time()
 
@@ -372,6 +369,20 @@ mp.add_pattern(r".*norm\d?.*",{})
     
 if H1.tfixup: mp.patch_model(model1)
 if H2.tfixup: mp.patch_model(model2)
+
+# %%
+"""
+# Add Torch ORT Step
+"""
+
+# %%
+#from torch_ort import ORTModule
+from onnxruntime.training.ortmodule import ORTModule, DebugOptions, LogLevel
+debug_options = DebugOptions(save_onnx=True, onnx_prefix='pre', log_level=LogLevel.INFO)
+
+print("Encapsulating models using ORTModule...")
+model1 = ORTModule(model1, DebugOptions(save_onnx=True, onnx_prefix='model1', log_level=LogLevel.INFO))
+model2 = ORTModule(model2, DebugOptions(save_onnx=True, onnx_prefix='model2', log_level=LogLevel.INFO))
 
 # %%
 state_dict1 = torch.load(in_d / f'{H1.load}', map_location=DEVICE)
