@@ -245,8 +245,6 @@ class TutorNet(nn.Module):
         # print(enc_cont.shape)
         enc_cat  =  enc_cat.view(b * sl, catf)   # b*sl, catf
         enc_tags = enc_tags.view(b * sl, tagsf) # b*sl, tagsf
-        print("b, sl, tagsf")
-        print(b, sl, tagsf)
         enc_tagw = enc_tagw.view(b * sl, tagsf) # b*sl, tagsf
 
         dec_cat  =  dec_cat.view(b * sl, catf)   # b*sl, catf
@@ -736,29 +734,129 @@ Convert models to ONNX before inference
 
 # %%
 import torch.onnx
-print("tag_emb_szs", tag_emb_szs)
+
+# Duplicate generation of input further below to obtain dummy input
+# for ONNX model export
+def generate_dummy_input():
+    n_read_rows = 0
+    n_predicted_rows = 0
+    n_predicted_rows_by_model_2 = 0
+    inference_start_time = time.time()
+    flag_ensemble = True
+
+    Col = None
+    prior_user_ids = None # linter go away
+    all_preds = torch.FloatTensor()
+    all_targs = torch.LongTensor()
+
+    pbar = tqdm(env.iter_test())
+
+    for test_df, pred_df in pbar:
+        if Col is None:
+            Col = enum.IntEnum('Col', test_df.columns.tolist(), start=0)
+
+        prior_group_answers_correct = np.fromstring(test_df.iloc[0].prior_group_answers_correct[1:-1], dtype=np.int16, sep=',')
+        prior_group_responses       = np.fromstring(test_df.iloc[0].prior_group_responses      [1:-1], dtype=np.int16, sep=',')
+
+        if prior_group_responses.size > 0: update_answers(
+            prior_user_ids,
+            prior_group_answers_correct,
+            prior_group_responses,
+            meta.cat_names,
+            meta.cont_names,
+            meta.codes_d,
+            data.cat_d,
+            data.cont_d,
+            users_d,
+            attempt_num,
+            attempts_correct
+        )
+
+        prior_user_ids = update_questions(
+            test_df, 
+            Col,
+            meta.cat_names, 
+            meta.cont_names, 
+            meta.qc_d, 
+            meta.lc_d,
+            meta.codes_d, 
+            QCols, 
+            LCols, 
+            Cats,
+            Conts, 
+            data.cat_d, 
+            data.cont_d, 
+            data.tags_d, 
+            data.tagw_d, 
+            data.last_q_container_id_d,
+            data.last_ts, 
+            attempt_num,
+            attempts_correct,
+            data.qp_d,
+            users_d
+        )
+            
+        # get x
+        a_mask, a_cat, a_cont, a_tags, a_tagw = get_x(
+            prior_user_ids,
+            meta.cat_names,
+            meta.cont_names,
+            data.cat_d,
+            data.cont_d,
+            data.tags_d,
+            data.tagw_d,
+            H.chunk_size
+        )
+
+        # Predict
+        if MODE == Mode.blindfolded_gunslinger and n_read_rows < BLIND_CUTOFF * 2.5e6:
+            preds = torch.full((len(test_df),), 0.5)
+            inference_start_time = time.time()
+        else:
+            with torch.no_grad():
+                batch_preds1 = torch.FloatTensor().to(DEVICE)
+                if flag_ensemble:
+                    batch_preds2 = torch.FloatTensor().to(DEVICE)
+                for b in range((a_cat.shape[0] + H.bs - 1) // H.bs):
+                    x_mask = torch.from_numpy(a_mask[b*H.bs:(b+1)*H.bs]).to(DEVICE)
+                    x_cat  = torch.from_numpy(a_cat [b*H.bs:(b+1)*H.bs]).to(DEVICE)
+                    x_cont = torch.from_numpy(a_cont[b*H.bs:(b+1)*H.bs]).to(DEVICE)
+                    x_tags = torch.from_numpy(a_tags[b*H.bs:(b+1)*H.bs]).to(DEVICE)
+                    x_tagw = torch.from_numpy(a_tagw[b*H.bs:(b+1)*H.bs]).to(DEVICE)
+
+                    # Normalize x_cont on GPU and take care of nans
+                    x_cont = (x_cont - means) / stds
+                    x_cont[torch.isnan(x_cont)] = 0.
+                    x_cont = x_cont.to(torch.float32)
+
+                    return x_mask.clone(), x_cat.clone(), x_cont.clone(), x_tags.clone(), x_tagw.clone()
+
 def convert_model_to_onnx(model, name):
     model.eval()
-    dummy_input = (
-        torch.zeros(50, 500, dtype=torch.bool).to(DEVICE), #x_mask
-        torch.zeros(50, 500, 11, dtype=torch.long).to(DEVICE), #x_cat
-        torch.zeros(50, 500, 23, dtype=torch.float).to(DEVICE), #x_cont
-        torch.zeros(50, 500, 6, dtype=torch.long).to(DEVICE), #x_tags
-        torch.zeros(50, 500, 23, dtype=torch.float).to(DEVICE) #x_tagw
-    )
+    dummy_input = generate_dummy_input()
+    print("Dummy input:")
+    print(dummy_input, type(dummy_input), len(dummy_input))
+    print("Dummy input size:")
+    for tensor in dummy_input:
+        print(tensor.size(), tensor.type())
 
-    torch.onnx.export(model,
-         dummy_input, 
-         f"{name}_exported.onnx",
-         export_params=True,  # store the trained parameter weights inside the model file 
-         opset_version=15, 
-         do_constant_folding=True,
-         input_names = ['x_mask, x_cat, x_cont, x_tags, x_tagw'],
-         output_names = ['preds'],
-         dynamic_axes={'x_mask' : [0], 'x_cat' : [0], 'x_cont' : [0], 'x_tags' : [0], 'x_tagw' : [0], 'preds': [0]}
-    ) 
-    print(" ") 
-    print('Model has been converted to ONNX') 
+    import os
+    if not os.path.exists(os.path.dirname(os.path.realpath(__file__))+"/{0}_exported.onnx".format(name)):
+        torch.onnx.export(model,
+            args=dummy_input, 
+            f=f"{name}_exported.onnx",
+            export_params=True,  # store the trained parameter weights inside the model file 
+            opset_version=15, 
+            do_constant_folding=True,
+            input_names = ['x_mask', 'x_cat', 'x_cont', 'x_tags', 'x_tagw'],
+            output_names = ['preds'],
+            dynamic_axes={'x_mask' : [0], 'x_cat' : [0], 'x_cont' : [0], 'x_tags' : [0], 'x_tagw' : [0], 'preds': [0]},
+            verbose=True
+        ) 
+        print("Model {0} has been converted to ONNX")
+    else:
+        print("Model {0} already exists".format(name))
+
 convert_model_to_onnx(model1, "model1")
 convert_model_to_onnx(model2, "model2")
 
@@ -766,11 +864,22 @@ convert_model_to_onnx(model2, "model2")
 """
 Load exported ONNX models before inference
 """
-model1 = torch.onnx.load("model1_exported.onnx")
-model2 = torch.onnx.load("model2_exported.onnx")
+import onnx
+model1 = onnx.load("model1_exported.onnx")
+model2 = onnx.load("model2_exported.onnx")
 
-torch.onnx.checker.check_model(model1)
-torch.onnx.checker.check_model(model2)
+onnx.checker.check_model(model1)
+onnx.checker.check_model(model2)
+
+import psutil
+import onnxruntime
+assert 'CUDAExecutionProvider' in onnxruntime.get_available_providers()
+
+ort_session_1 = onnxruntime.InferenceSession("model1_exported.onnx", providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+ort_session_2 = onnxruntime.InferenceSession("model2_exported.onnx", providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+
+def to_numpy(tensor):
+    return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
 
 # %%
 n_read_rows = 0
@@ -868,13 +977,42 @@ for test_df, pred_df in pbar:
                     x_cont = x_cont.to(torch.float32)
 
                     if flag_ensemble:
-                        preds1 = model1(x_mask.clone(), x_cat.clone(), x_cont.clone(), x_tags.clone(), x_tagw.clone())
+                        # Convert input Torch tensors to Numpy arrays for ORT compatibility
+                        # and then convert back Numpy output to Torch tensor
+                        preds1 = torch.from_numpy(ort_session_1.run(
+                            None,
+                            {
+                                "x_mask": to_numpy(x_mask.clone()),
+                                "x_cat": to_numpy(x_cat.clone()),
+                                "x_cont": to_numpy(x_cont.clone()),
+                                "x_tags": to_numpy(x_tags.clone()),
+                                "x_tagw": to_numpy(x_tagw.clone())
+                            }
+                        )[0]).to(DEVICE)
                     else:
-                        preds1 = model1(x_mask, x_cat, x_cont, x_tags, x_tagw)
+                        preds1 = torch.from_numpy(ort_session_1.run(
+                            None,
+                            {
+                                "x_mask": to_numpy(x_mask),
+                                "x_cat": to_numpy(x_cat),
+                                "x_cont": to_numpy(x_cont),
+                                "x_tags": to_numpy(x_tags),
+                                "x_tagw": to_numpy(x_tagw)
+                            }
+                        )[0]).to(DEVICE)
                     batch_preds1 = torch.cat([batch_preds1, preds1])
 
                     if flag_ensemble:
-                        preds2 = model2(x_mask, x_cat, x_cont, x_tags, x_tagw)
+                        preds2 = torch.from_numpy(ort_session_2.run(
+                            None,
+                            {
+                                "x_mask": to_numpy(x_mask),
+                                "x_cat": to_numpy(x_cat),
+                                "x_cont": to_numpy(x_cont),
+                                "x_tags": to_numpy(x_tags),
+                                "x_tagw": to_numpy(x_tagw)
+                            }
+                        )[0]).to(DEVICE)
                         batch_preds2 = torch.cat([batch_preds2, preds2])
 
                 preds = get_preds(prior_user_ids, batch_preds1, torch.from_numpy(a_mask).to(DEVICE))
