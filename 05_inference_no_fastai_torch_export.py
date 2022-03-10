@@ -176,6 +176,13 @@ Conts = enum.IntEnum('Conts', meta.cont_names, start=0)
 QCols = enum.IntEnum('QCols', meta.qcols, start=0)
 LCols = enum.IntEnum('LCols', meta.lcols, start=0)
 
+def embeddingbag_for_onnx(m):
+    def func(x, per_sample_weights):
+        offsets = torch.arange(0, x.size(0)*x.size(1), x.size(1)).to(x.device)
+        output = m(x.view(-1), offsets, per_sample_weights=per_sample_weights.view(-1))
+        return output.view(x.size(0), -1)
+    return func
+
 # %%
 class TutorNet(nn.Module):
     def __init__(self, emb_szs, tag_emb_szs, emb_do, n_cont, trf_dim, trf_enc, trf_dec, trf_heads, trf_do, trf_act):
@@ -187,6 +194,7 @@ class TutorNet(nn.Module):
         self.embeds    = nn.ModuleList([nn.Sequential(nn.Embedding(ni+1, nf, max_norm=1.),nn.Linear(nf,trf_dim)) 
                                         for ni,nf in emb_szs])
         self.tagembeds = nn.EmbeddingBag(*tag_emb_szs, max_norm=1., mode='sum')
+        self.tagembeds_patch = embeddingbag_for_onnx(self.tagembeds)
             
         self.conts     = nn.Linear(n_cont,trf_dim)
             
@@ -254,13 +262,13 @@ class TutorNet(nn.Module):
         # embed categorical vars
         enc = torch.mean(torch.stack([
             *[ e(enc_cat[:,i]) for i, e in enumerate(self.embeds) ],
-            self.tagembeds(enc_tags, per_sample_weights=enc_tagw),
+            self.tagembeds_patch(enc_tags, per_sample_weights=enc_tagw),
             self.conts(enc_cont).view(-1,self.trf_dim)
         ]),dim=0)
         
         dec = torch.mean(torch.stack([
             *[ e(dec_cat[:,i]) for i, e in enumerate(self.embeds) ],
-            self.tagembeds(dec_tags, per_sample_weights=dec_tagw),
+            self.tagembeds_patch(dec_tags, per_sample_weights=dec_tagw),
             self.conts(dec_cont).view(-1,self.trf_dim)
         ]),dim=0)
         
