@@ -745,7 +745,10 @@ all_targs = torch.LongTensor()
 
 pbar = tqdm(env.iter_test())
 
+inference_count = 0
 for test_df, pred_df in pbar:
+    if inference_count > 90:
+        break
     if Col is None:
         Col = enum.IntEnum('Col', test_df.columns.tolist(), start=0)
 
@@ -832,16 +835,6 @@ for test_df, pred_df in pbar:
                         preds1 = model1(x_mask, x_cat, x_cont, x_tags, x_tagw)
                     batch_preds1 = torch.cat([batch_preds1, preds1])
 
-                    print("DEBUG")
-                    print("Size: x_mask, x_cat, x_cont, x_tags, x_tagw")
-                    print(x_mask.size(), x_cat.size(), x_cont.size(), x_tags.size(), x_tagw.size())
-                    print("Type: x_mask, x_cat, x_cont, x_tags, x_tagw")
-                    print(x_mask.type(), x_cat.type(), x_cont.type(), x_tags.type(), x_tagw.type())
-                    print("Size: preds")
-                    print(preds1.size())
-                    print("Type: preds")
-                    print(preds1.type())
-
                     if flag_ensemble:
                         preds2 = model2(x_mask, x_cat, x_cont, x_tags, x_tagw)
                         batch_preds2 = torch.cat([batch_preds2, preds2])
@@ -888,6 +881,8 @@ for test_df, pred_df in pbar:
             pvt_auroc = my_roc_auc(pvt_preds[:len(pvt_targs)], pvt_targs)
             postfix['auroc (pvt)'] = f'{pvt_auroc:.6f}'
         pbar.set_postfix(postfix)
+    
+    inference_count += 1
 
 
 

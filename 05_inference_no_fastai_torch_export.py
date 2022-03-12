@@ -35,8 +35,6 @@ from pathlib import Path
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 
-start_time = time.time()
-
 # %%
 start_time = time.time()
 
@@ -673,14 +671,14 @@ def get_x(user_ids, cat_names, cont_names, hist_cat_d, hist_cont_d, hist_tags_d,
     return x_mask, x_cat, x_cont, x_tags, x_tagw
 
 # %%
-def get_preds(user_ids, preds, x_mask):
-    poi = torch.zeros(len(user_ids), 2, device=preds.device) # predictions of interest
+def get_preds_numpy(user_ids, preds, x_mask):
+    poi = np.zeros((len(user_ids), 2)) # predictions of interest
 
     user_row = defaultdict(lambda: len(user_row))
     for uid in user_ids:
         user_row[uid]
 
-    poi_idxs = { uid: torch.from_numpy(user_ids == uid)  for uid in user_row.keys() }
+    poi_idxs = { uid: user_ids == uid  for uid in user_row.keys() }
     
     for uid in user_ids:
         ur = user_row[uid]           # user row (1st dim) of the preds tensor
@@ -688,8 +686,8 @@ def get_preds(user_ids, preds, x_mask):
         x = preds[ur,~x_mask[ur],:2] # get all predictions (both history and new)
         x = x[-pi.sum():]            # the last pi.sum() preds are the new ones
         poi[pi] = x
-        
-    return torch.softmax(poi, dim=-1)[:,1].detach().cpu()
+    from scipy.special import softmax
+    return softmax(poi, axis=-1)[:,1]
 
 # %%
 from numba import njit
@@ -697,8 +695,6 @@ from scipy.stats import rankdata
 
 @njit
 def _auc(actual, pred_ranks):
-    actual = np.asarray(actual)
-    pred_ranks = np.asarray(pred_ranks)
     n_pos = np.sum(actual)
     n_neg = len(actual) - n_pos
     return (np.sum(pred_ranks[actual==1]) - n_pos*(n_pos+1)/2) / (n_pos*n_neg)
@@ -707,17 +703,16 @@ def auc(actual, predicted):
     pred_ranks = rankdata(predicted)
     return _auc(actual, pred_ranks)
 
-# %%
-def my_roc_auc(pred, targ):
+def my_roc_auc_numpy(pred, targ):
     idx = targ != -1
     pred = pred[idx]
     targ = targ[idx]
-    return auc(targ.cpu().numpy(), pred.cpu().numpy())
+    return auc(targ, pred)
 
 # %%
 previous_users = None
-means = torch.from_numpy(meta.means).to(DEVICE)
-stds  = torch.from_numpy(meta.stds).to(DEVICE)
+means = meta.means
+stds  = meta.stds
 
 # %%
 if not KAGGLE:
@@ -743,103 +738,105 @@ Convert models to ONNX before inference
 # %%
 import torch.onnx
 
-# Duplicate generation of input further below to obtain dummy input
-# for ONNX model export
-def generate_dummy_input():
-    n_read_rows = 0
-    n_predicted_rows = 0
-    n_predicted_rows_by_model_2 = 0
-    inference_start_time = time.time()
-    flag_ensemble = True
-
-    Col = None
-    prior_user_ids = None # linter go away
-    all_preds = torch.FloatTensor()
-    all_targs = torch.LongTensor()
-
-    pbar = tqdm(env.iter_test())
-
-    for test_df, pred_df in pbar:
-        if Col is None:
-            Col = enum.IntEnum('Col', test_df.columns.tolist(), start=0)
-
-        prior_group_answers_correct = np.fromstring(test_df.iloc[0].prior_group_answers_correct[1:-1], dtype=np.int16, sep=',')
-        prior_group_responses       = np.fromstring(test_df.iloc[0].prior_group_responses      [1:-1], dtype=np.int16, sep=',')
-
-        if prior_group_responses.size > 0: update_answers(
-            prior_user_ids,
-            prior_group_answers_correct,
-            prior_group_responses,
-            meta.cat_names,
-            meta.cont_names,
-            meta.codes_d,
-            data.cat_d,
-            data.cont_d,
-            users_d,
-            attempt_num,
-            attempts_correct
-        )
-
-        prior_user_ids = update_questions(
-            test_df, 
-            Col,
-            meta.cat_names, 
-            meta.cont_names, 
-            meta.qc_d, 
-            meta.lc_d,
-            meta.codes_d, 
-            QCols, 
-            LCols, 
-            Cats,
-            Conts, 
-            data.cat_d, 
-            data.cont_d, 
-            data.tags_d, 
-            data.tagw_d, 
-            data.last_q_container_id_d,
-            data.last_ts, 
-            attempt_num,
-            attempts_correct,
-            data.qp_d,
-            users_d
-        )
-            
-        # get x
-        a_mask, a_cat, a_cont, a_tags, a_tagw = get_x(
-            prior_user_ids,
-            meta.cat_names,
-            meta.cont_names,
-            data.cat_d,
-            data.cont_d,
-            data.tags_d,
-            data.tagw_d,
-            H.chunk_size
-        )
-
-        # Predict
-        if MODE == Mode.blindfolded_gunslinger and n_read_rows < BLIND_CUTOFF * 2.5e6:
-            preds = torch.full((len(test_df),), 0.5)
-            inference_start_time = time.time()
-        else:
-            with torch.no_grad():
-                batch_preds1 = torch.FloatTensor().to(DEVICE)
-                if flag_ensemble:
-                    batch_preds2 = torch.FloatTensor().to(DEVICE)
-                for b in range((a_cat.shape[0] + H.bs - 1) // H.bs):
-                    x_mask = torch.from_numpy(a_mask[b*H.bs:(b+1)*H.bs]).to(DEVICE)
-                    x_cat  = torch.from_numpy(a_cat [b*H.bs:(b+1)*H.bs]).to(DEVICE)
-                    x_cont = torch.from_numpy(a_cont[b*H.bs:(b+1)*H.bs]).to(DEVICE)
-                    x_tags = torch.from_numpy(a_tags[b*H.bs:(b+1)*H.bs]).to(DEVICE)
-                    x_tagw = torch.from_numpy(a_tagw[b*H.bs:(b+1)*H.bs]).to(DEVICE)
-
-                    # Normalize x_cont on GPU and take care of nans
-                    x_cont = (x_cont - means) / stds
-                    x_cont[torch.isnan(x_cont)] = 0.
-                    x_cont = x_cont.to(torch.float32)
-
-                    return x_mask.clone(), x_cat.clone(), x_cont.clone(), x_tags.clone(), x_tagw.clone()
-
 def convert_model_to_onnx(model, name):
+    # Duplicate generation of input further below to obtain dummy input
+    # for ONNX model export
+    def generate_dummy_input():
+        n_read_rows = 0
+        n_predicted_rows = 0
+        n_predicted_rows_by_model_2 = 0
+        flag_ensemble = True
+
+        Col = None
+        prior_user_ids = None # linter go away
+        all_preds = torch.FloatTensor()
+        all_targs = torch.LongTensor()
+
+        pbar = tqdm(env.iter_test())
+
+        for test_df, pred_df in pbar:
+            if Col is None:
+                Col = enum.IntEnum('Col', test_df.columns.tolist(), start=0)
+
+            prior_group_answers_correct = np.fromstring(test_df.iloc[0].prior_group_answers_correct[1:-1], dtype=np.int16, sep=',')
+            prior_group_responses       = np.fromstring(test_df.iloc[0].prior_group_responses      [1:-1], dtype=np.int16, sep=',')
+
+            if prior_group_responses.size > 0: update_answers(
+                prior_user_ids,
+                prior_group_answers_correct,
+                prior_group_responses,
+                meta.cat_names,
+                meta.cont_names,
+                meta.codes_d,
+                data.cat_d,
+                data.cont_d,
+                users_d,
+                attempt_num,
+                attempts_correct
+            )
+
+            prior_user_ids = update_questions(
+                test_df, 
+                Col,
+                meta.cat_names, 
+                meta.cont_names, 
+                meta.qc_d, 
+                meta.lc_d,
+                meta.codes_d, 
+                QCols, 
+                LCols, 
+                Cats,
+                Conts, 
+                data.cat_d, 
+                data.cont_d, 
+                data.tags_d, 
+                data.tagw_d, 
+                data.last_q_container_id_d,
+                data.last_ts, 
+                attempt_num,
+                attempts_correct,
+                data.qp_d,
+                users_d
+            )
+                
+            # get x
+            a_mask, a_cat, a_cont, a_tags, a_tagw = get_x(
+                prior_user_ids,
+                meta.cat_names,
+                meta.cont_names,
+                data.cat_d,
+                data.cont_d,
+                data.tags_d,
+                data.tagw_d,
+                H.chunk_size
+            )
+
+            # Predict
+            if MODE == Mode.blindfolded_gunslinger and n_read_rows < BLIND_CUTOFF * 2.5e6:
+                preds = torch.full((len(test_df),), 0.5)
+                inference_start_time = time.time()
+            else:
+                with torch.no_grad():
+                    batch_preds1 = torch.FloatTensor().to(DEVICE)
+                    if flag_ensemble:
+                        batch_preds2 = torch.FloatTensor().to(DEVICE)
+                    for b in range((a_cat.shape[0] + H.bs - 1) // H.bs):
+                        x_mask = torch.from_numpy(a_mask[b*H.bs:(b+1)*H.bs]).to(DEVICE)
+                        x_cat  = torch.from_numpy(a_cat [b*H.bs:(b+1)*H.bs]).to(DEVICE)
+                        x_cont = torch.from_numpy(a_cont[b*H.bs:(b+1)*H.bs]).to(DEVICE)
+                        x_tags = torch.from_numpy(a_tags[b*H.bs:(b+1)*H.bs]).to(DEVICE)
+                        x_tagw = torch.from_numpy(a_tagw[b*H.bs:(b+1)*H.bs]).to(DEVICE)
+
+                        # Normalize x_cont on GPU and take care of nans
+                        means = torch.from_numpy(meta.means).to(DEVICE)
+                        stds  = torch.from_numpy(meta.stds).to(DEVICE)
+
+                        x_cont = (x_cont - means) / stds
+                        x_cont[torch.isnan(x_cont)] = 0.
+                        x_cont = x_cont.to(torch.float32)
+
+                        return x_mask.clone(), x_cat.clone(), x_cont.clone(), x_tags.clone(), x_tagw.clone()
+
     model.eval()
     dummy_input = generate_dummy_input()
     print("Dummy input:")
@@ -898,12 +895,17 @@ flag_ensemble = True
 
 Col = None
 prior_user_ids = None # linter go away
-all_preds = torch.FloatTensor()
-all_targs = torch.LongTensor()
+all_preds = np.array([])
+all_targs = np.array([])
 
 pbar = tqdm(env.iter_test())
 
+inference_count = 0
+# This function's Torch tensors have been replaced with Numpy arrays
+# for better performance and compatibility with ORT.
 for test_df, pred_df in pbar:
+    if inference_count > 90:
+        break
     if Col is None:
         Col = enum.IntEnum('Col', test_df.columns.tolist(), start=0)
 
@@ -911,7 +913,7 @@ for test_df, pred_df in pbar:
     prior_group_responses       = np.fromstring(test_df.iloc[0].prior_group_responses      [1:-1], dtype=np.int16, sep=',')
 
     if MODE == Mode.hurry_up and n_read_rows > HURRY_UP_CUTOFF * 2.5e6:
-        preds = torch.full((len(test_df),), 0.5)
+        preds = np.full((len(test_df),), 0.5)
     else:
         if prior_group_responses.size > 0: update_answers(
             prior_user_ids,
@@ -965,69 +967,61 @@ for test_df, pred_df in pbar:
 
         # Predict
         if MODE == Mode.blindfolded_gunslinger and n_read_rows < BLIND_CUTOFF * 2.5e6:
-            preds = torch.full((len(test_df),), 0.5)
+            preds = np.full((len(test_df),), 0.5)
             inference_start_time = time.time()
         else:
-            with torch.no_grad():
-                batch_preds1 = torch.FloatTensor().to(DEVICE)
+            batch_preds1 = np.array([])
+            if flag_ensemble:
+                batch_preds2 = np.array([])
+            for b in range((a_cat.shape[0] + H.bs - 1) // H.bs):
+                x_mask = a_mask[b*H.bs:(b+1)*H.bs]
+                x_cat  = a_cat [b*H.bs:(b+1)*H.bs]
+                x_cont = a_cont[b*H.bs:(b+1)*H.bs]
+                x_tags = a_tags[b*H.bs:(b+1)*H.bs]
+                x_tagw = a_tagw[b*H.bs:(b+1)*H.bs]
+
+                # Normalize x_cont on GPU and take care of nans
+                x_cont = (x_cont - means) / stds
+                x_cont[np.isnan(x_cont)] = 0.
+                x_cont = np.float32(x_cont)
+
+                preds1 = ort_session_1.run(
+                        None,
+                        {
+                            "x_mask": x_mask,
+                            "x_cat": x_cat,
+                            "x_cont": x_cont,
+                            "x_tags": x_tags,
+                            "x_tagw": x_tagw
+                        }
+                    )[0]
+                if batch_preds1.size > 0:
+                    batch_preds1 = preds1.copy()
+                    batch_preds1 = np.concatenate([batch_preds1, preds1])
+                else:
+                    batch_preds1 = preds1.copy()
+
                 if flag_ensemble:
-                    batch_preds2 = torch.FloatTensor().to(DEVICE)
-                for b in range((a_cat.shape[0] + H.bs - 1) // H.bs):
-                    x_mask = torch.from_numpy(a_mask[b*H.bs:(b+1)*H.bs]).to(DEVICE)
-                    x_cat  = torch.from_numpy(a_cat [b*H.bs:(b+1)*H.bs]).to(DEVICE)
-                    x_cont = torch.from_numpy(a_cont[b*H.bs:(b+1)*H.bs]).to(DEVICE)
-                    x_tags = torch.from_numpy(a_tags[b*H.bs:(b+1)*H.bs]).to(DEVICE)
-                    x_tagw = torch.from_numpy(a_tagw[b*H.bs:(b+1)*H.bs]).to(DEVICE)
-
-                    # Normalize x_cont on GPU and take care of nans
-                    x_cont = (x_cont - means) / stds
-                    x_cont[torch.isnan(x_cont)] = 0.
-                    x_cont = x_cont.to(torch.float32)
-
-                    if flag_ensemble:
-                        # Convert input Torch tensors to Numpy arrays for ORT compatibility
-                        # and then convert back Numpy output to Torch tensor
-                        preds1 = torch.from_numpy(ort_session_1.run(
-                            None,
-                            {
-                                "x_mask": to_numpy(x_mask.clone()),
-                                "x_cat": to_numpy(x_cat.clone()),
-                                "x_cont": to_numpy(x_cont.clone()),
-                                "x_tags": to_numpy(x_tags.clone()),
-                                "x_tagw": to_numpy(x_tagw.clone())
-                            }
-                        )[0]).to(DEVICE)
+                    preds2 = ort_session_2.run(
+                        None,
+                        {
+                            "x_mask": x_mask,
+                            "x_cat": x_cat,
+                            "x_cont": x_cont,
+                            "x_tags": x_tags,
+                            "x_tagw": x_tagw
+                        }
+                    )[0]
+                    if batch_preds2.size > 0:
+                        batch_preds2 = np.concatenate([batch_preds2, preds2])
                     else:
-                        preds1 = torch.from_numpy(ort_session_1.run(
-                            None,
-                            {
-                                "x_mask": to_numpy(x_mask),
-                                "x_cat": to_numpy(x_cat),
-                                "x_cont": to_numpy(x_cont),
-                                "x_tags": to_numpy(x_tags),
-                                "x_tagw": to_numpy(x_tagw)
-                            }
-                        )[0]).to(DEVICE)
-                    batch_preds1 = torch.cat([batch_preds1, preds1])
+                        batch_preds2 = preds2.copy()
 
-                    if flag_ensemble:
-                        preds2 = torch.from_numpy(ort_session_2.run(
-                            None,
-                            {
-                                "x_mask": to_numpy(x_mask),
-                                "x_cat": to_numpy(x_cat),
-                                "x_cont": to_numpy(x_cont),
-                                "x_tags": to_numpy(x_tags),
-                                "x_tagw": to_numpy(x_tagw)
-                            }
-                        )[0]).to(DEVICE)
-                        batch_preds2 = torch.cat([batch_preds2, preds2])
-
-                preds = get_preds(prior_user_ids, batch_preds1, torch.from_numpy(a_mask).to(DEVICE))
+                preds = get_preds_numpy(prior_user_ids, batch_preds1, a_mask)
 
                 n_predicted_rows += len(test_df)
                 if flag_ensemble:
-                    preds2 = get_preds(prior_user_ids, batch_preds2, torch.from_numpy(a_mask).to(DEVICE))
+                    preds2 = get_preds_numpy(prior_user_ids, batch_preds2, a_mask)
                     preds = (preds + preds2) / 2
                     n_predicted_rows_by_model_2 += len(test_df)
 
@@ -1045,8 +1039,8 @@ for test_df, pred_df in pbar:
         flag_ensemble = estimated_total_inference_time < (TIME_BUDGET - startup_time)
 
     if not KAGGLE:
-        all_preds = torch.cat([all_preds, preds])
-        all_targs = torch.cat([all_targs, torch.LongTensor(prior_group_answers_correct)])
+        all_preds = np.concatenate([all_preds, preds])
+        all_targs = np.concatenate([all_targs, prior_group_answers_correct])
         pub_preds = all_preds[:int(PUB_PVT_CUTOFF * 2.5e6)]
         pub_targs = all_targs[:int(PUB_PVT_CUTOFF * 2.5e6)]
         pvt_preds = all_preds[int(PUB_PVT_CUTOFF * 2.5e6):]
@@ -1059,12 +1053,14 @@ for test_df, pred_df in pbar:
             postfix['eta'] = f'{estimated_total_inference_time / 60 / 60:.3f}/{(TIME_BUDGET - startup_time) / 60 / 60:.3f}'
 
         if len(pub_targs) > 0:
-            pub_auroc = my_roc_auc(pub_preds[:len(pub_targs)], pub_targs)
+            pub_auroc = my_roc_auc_numpy(pub_preds[:len(pub_targs)], pub_targs)
             postfix['auroc (pub)'] = f'{pub_auroc:.6f}'
         if len(pvt_targs) > 0:
-            pvt_auroc = my_roc_auc(pvt_preds[:len(pvt_targs)], pvt_targs)
+            pvt_auroc = my_roc_auc_numpy(pvt_preds[:len(pvt_targs)], pvt_targs)
             postfix['auroc (pvt)'] = f'{pvt_auroc:.6f}'
         pbar.set_postfix(postfix)
+    
+    inference_count += 1
 
 
 

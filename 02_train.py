@@ -71,6 +71,7 @@ def main(
     tfixup:        Param("Use T-Fixup init", ast.literal_eval) = True,
     mixup:         Param("Use mixup", ast.literal_eval) = False,
     torch_ort:     Param("Use TorchORT", ast.literal_eval) = False,
+    sccl:          Param("Use SCCL as distributed backend", ast.literal_eval) = False,
     opt:           Param("Optimizer", str) = 'ranger_lamb',
     opt_kwargs:    Param("Optional args for opt, eg. eps=1e-4", str, nargs='+') = {},
     fit:           Param("fit or fit_one_cycle", str) = 'fit_flat_cos',
@@ -91,6 +92,27 @@ def main(
 _H = AttrDict
 
 start_time = time.time()
+
+# # Add SCCL Step:
+
+# In[ ]:
+
+def show():
+    print()
+    print(f"SCCL_CONFIG = {os.environ['SCCL_CONFIG']}")
+    print(f"NCCL_MIN_NCHANNELS = {os.environ['NCCL_MIN_NCHANNELS']}")
+    print(f"NCCL_NET_SHARED_BUFFERS = {os.environ['NCCL_NET_SHARED_BUFFERS']}")
+    print(f"Contents of {os.environ['SCCL_CONFIG']}:")
+    with open(os.environ['SCCL_CONFIG']) as f:
+        print(f.read())
+    print()
+
+if H.sccl:
+    print("Enabling SCCL Distributed computing")
+    import sccl
+    sccl.init('ndv2', 1, (sccl.Collective.alltoall, ('1GB')))
+    show()
+
 
 # In[5]:
 
