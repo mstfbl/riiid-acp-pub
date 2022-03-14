@@ -880,8 +880,8 @@ import psutil
 import onnxruntime
 assert 'CUDAExecutionProvider' in onnxruntime.get_available_providers()
 
-ort_session_1 = onnxruntime.InferenceSession("model1_exported.onnx", providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-ort_session_2 = onnxruntime.InferenceSession("model2_exported.onnx", providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+ort_session_1 = onnxruntime.InferenceSession("model1_exported.onnx", providers=['CUDAExecutionProvider'])
+ort_session_2 = onnxruntime.InferenceSession("model2_exported.onnx", providers=['CUDAExecutionProvider'])
 
 def to_numpy(tensor):
     return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
@@ -985,23 +985,37 @@ for test_df, pred_df in pbar:
                 x_cont[np.isnan(x_cont)] = 0.
                 x_cont = np.float32(x_cont)
 
-                preds1 = ort_session_1.run(
-                        None,
-                        {
-                            "x_mask": x_mask,
-                            "x_cat": x_cat,
-                            "x_cont": x_cont,
-                            "x_tags": x_tags,
-                            "x_tagw": x_tagw
-                        }
-                    )[0]
+                pred_time_start_1 = time.time()
+                if flag_ensemble:
+                    preds1 = ort_session_1.run(
+                            None,
+                            {
+                                "x_mask": x_mask.copy(),
+                                "x_cat": x_cat.copy(),
+                                "x_cont": x_cont.copy(),
+                                "x_tags": x_tags.copy(),
+                                "x_tagw": x_tagw.copy()
+                            }
+                        )[0]
+                else:
+                    preds1 = ort_session_1.run(
+                            None,
+                            {
+                                "x_mask": x_mask,
+                                "x_cat": x_cat,
+                                "x_cont": x_cont,
+                                "x_tags": x_tags,
+                                "x_tagw": x_tagw
+                            }
+                        )[0]
+                pred_time_end_1 = time.time()
                 if batch_preds1.size > 0:
-                    batch_preds1 = preds1.copy()
                     batch_preds1 = np.concatenate([batch_preds1, preds1])
                 else:
-                    batch_preds1 = preds1.copy()
+                    batch_preds1 = preds1
 
                 if flag_ensemble:
+                    pred_time_start_2 = time.time()
                     preds2 = ort_session_2.run(
                         None,
                         {
@@ -1012,10 +1026,11 @@ for test_df, pred_df in pbar:
                             "x_tagw": x_tagw
                         }
                     )[0]
+                    pred_time_end_2 = time.time()
                     if batch_preds2.size > 0:
                         batch_preds2 = np.concatenate([batch_preds2, preds2])
                     else:
-                        batch_preds2 = preds2.copy()
+                        batch_preds2 = preds2
 
                 preds = get_preds_numpy(prior_user_ids, batch_preds1, a_mask)
 
@@ -1046,9 +1061,11 @@ for test_df, pred_df in pbar:
         pvt_preds = all_preds[int(PUB_PVT_CUTOFF * 2.5e6):]
         pvt_targs = all_targs[int(PUB_PVT_CUTOFF * 2.5e6):]
         postfix = {
-            'model 1': n_predicted_rows,
-            'model 1+2': n_predicted_rows_by_model_2,
+            'model 1 pred rows': n_predicted_rows,
+            'model 2 pred rows': n_predicted_rows_by_model_2,
         }
+        postfix['model1 pred time(sec)'] = f'{(pred_time_end_1 - pred_time_start_1):.3f}'
+        postfix['model2 pred time(sec)'] = f'{(pred_time_end_2 - pred_time_start_2):.3f}'
         if n_predicted_rows >= 1000:
             postfix['eta'] = f'{estimated_total_inference_time / 60 / 60:.3f}/{(TIME_BUDGET - startup_time) / 60 / 60:.3f}'
 

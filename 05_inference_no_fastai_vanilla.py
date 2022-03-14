@@ -829,14 +829,18 @@ for test_df, pred_df in pbar:
                     x_cont[torch.isnan(x_cont)] = 0.
                     x_cont = x_cont.to(torch.float32)
 
+                    pred_time_start_1 = time.time()
                     if flag_ensemble:
                         preds1 = model1(x_mask.clone(), x_cat.clone(), x_cont.clone(), x_tags.clone(), x_tagw.clone())
                     else:
                         preds1 = model1(x_mask, x_cat, x_cont, x_tags, x_tagw)
+                    pred_time_end_1 = time.time()
                     batch_preds1 = torch.cat([batch_preds1, preds1])
 
                     if flag_ensemble:
+                        pred_time_start_2 = time.time()
                         preds2 = model2(x_mask, x_cat, x_cont, x_tags, x_tagw)
+                        pred_time_end_2 = time.time()
                         batch_preds2 = torch.cat([batch_preds2, preds2])
 
                 preds = get_preds(prior_user_ids, batch_preds1, torch.from_numpy(a_mask).to(DEVICE))
@@ -868,9 +872,11 @@ for test_df, pred_df in pbar:
         pvt_preds = all_preds[int(PUB_PVT_CUTOFF * 2.5e6):]
         pvt_targs = all_targs[int(PUB_PVT_CUTOFF * 2.5e6):]
         postfix = {
-            'model 1': n_predicted_rows,
-            'model 1+2': n_predicted_rows_by_model_2,
+            'model 1 pred rows': n_predicted_rows,
+            'model 2 pred rows': n_predicted_rows_by_model_2,
         }
+        postfix['model1 pred time(sec)'] = f'{(pred_time_end_1 - pred_time_start_1):.3f}'
+        postfix['model2 pred time(sec)'] = f'{(pred_time_end_2 - pred_time_start_2):.3f}'
         if n_predicted_rows >= 1000:
             postfix['eta'] = f'{estimated_total_inference_time / 60 / 60:.3f}/{(TIME_BUDGET - startup_time) / 60 / 60:.3f}'
 
