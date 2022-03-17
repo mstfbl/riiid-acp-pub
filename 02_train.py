@@ -778,9 +778,11 @@ def load(learn:Learner,fn,with_opt=False):
 # In[ ]:
 
 if H.torch_ort:
-    from torch_ort import ORTModule
+    from onnxruntime.training.ortmodule import ORTModule, DebugOptions, LogLevel
+    os.environ['ORTMODULE_SAVE_ONNX_PATH'] = '/repos/riiid-acp-pub/run_logs'
     print("Encapsulating model with ORTModule")
-    model = ORTModule(model)
+    debug_options = DebugOptions(save_onnx=True, onnx_prefix="riiid_ort_model_epochs_{0}_gpus_{1}_batch_size_{1}_".format(H.epochs, H.workers, H.bs), log_level=LogLevel.INFO)
+    model = ORTModule(model, debug_options)
 
 # # Load model
 
