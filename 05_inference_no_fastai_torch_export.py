@@ -647,10 +647,10 @@ def get_x(user_ids, cat_names, cont_names, hist_cat_d, hist_cont_d, hist_tags_d,
     n_users = len(num_rows_per_uid_d)
 
     # prepare the batch
-    x_mask = np.ones ((n_users, chunk_size), dtype=np.bool)
-    x_cat  = np.zeros((n_users, chunk_size, len(cat_names)),  dtype=np.long)
+    x_mask = np.ones ((n_users, chunk_size), dtype=bool)
+    x_cat  = np.zeros((n_users, chunk_size, len(cat_names)),  dtype=np.int64)
     x_cont = np.full ((n_users, chunk_size, len(cont_names)), np.nan, dtype=np.float32)
-    x_tags = np.zeros((n_users, chunk_size, 6), dtype=np.long)
+    x_tags = np.zeros((n_users, chunk_size, 6), dtype=np.int64)
     x_tagw = np.zeros((n_users, chunk_size, 6), dtype=np.float32)
     
     for i, uid in enumerate(num_rows_per_uid_d.keys()):
@@ -839,28 +839,22 @@ def convert_model_to_onnx(model, name):
 
     model.eval()
     dummy_input = generate_dummy_input()
-    print("Dummy input:")
-    print(dummy_input, type(dummy_input), len(dummy_input))
-    print("Dummy input size:")
-    for tensor in dummy_input:
-        print(tensor.size(), tensor.type())
 
     import os
-    if not os.path.exists(os.path.dirname(os.path.realpath(__file__))+"/{0}_exported.onnx".format(name)):
-        torch.onnx.export(model,
-            args=dummy_input, 
-            f=f"{name}_exported.onnx",
-            export_params=True,  # store the trained parameter weights inside the model file 
-            opset_version=15, 
-            do_constant_folding=True,
-            input_names = ['x_mask', 'x_cat', 'x_cont', 'x_tags', 'x_tagw'],
-            output_names = ['preds'],
-            dynamic_axes={'x_mask' : [0], 'x_cat' : [0], 'x_cont' : [0], 'x_tags' : [0], 'x_tagw' : [0], 'preds': [0]},
-            verbose=True
-        ) 
-        print("Model {0} has been converted to ONNX")
-    else:
-        print("Model {0} already exists".format(name))
+    if os.path.exists(os.path.dirname(os.path.realpath(__file__))+"/{0}_exported.onnx".format(name)):
+        os.remove(os.path.dirname(os.path.realpath(__file__))+"/{0}_exported.onnx".format(name))
+    torch.onnx.export(model,
+        args=dummy_input, 
+        f=f"{name}_exported.onnx",
+        export_params=True,  # store the trained parameter weights inside the model file 
+        opset_version=15, 
+        do_constant_folding=True,
+        input_names = ['x_mask', 'x_cat', 'x_cont', 'x_tags', 'x_tagw'],
+        output_names = ['preds'],
+        dynamic_axes={'x_mask' : [0], 'x_cat' : [0], 'x_cont' : [0], 'x_tags' : [0], 'x_tagw' : [0], 'preds': [0]},
+        verbose=True
+    ) 
+    print("Model {0} has been converted to ONNX".format(name))
 
 convert_model_to_onnx(model1, "model1")
 convert_model_to_onnx(model2, "model2")

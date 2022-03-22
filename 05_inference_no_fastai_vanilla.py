@@ -641,10 +641,10 @@ def get_x(user_ids, cat_names, cont_names, hist_cat_d, hist_cont_d, hist_tags_d,
     n_users = len(num_rows_per_uid_d)
 
     # prepare the batch
-    x_mask = np.ones ((n_users, chunk_size), dtype=np.bool)
-    x_cat  = np.zeros((n_users, chunk_size, len(cat_names)),  dtype=np.long)
+    x_mask = np.ones ((n_users, chunk_size), dtype=bool)
+    x_cat  = np.zeros((n_users, chunk_size, len(cat_names)),  dtype=np.int64)
     x_cont = np.full ((n_users, chunk_size, len(cont_names)), np.nan, dtype=np.float32)
-    x_tags = np.zeros((n_users, chunk_size, 6), dtype=np.long)
+    x_tags = np.zeros((n_users, chunk_size, 6), dtype=np.int64)
     x_tagw = np.zeros((n_users, chunk_size, 6), dtype=np.float32)
     
     for i, uid in enumerate(num_rows_per_uid_d.keys()):
