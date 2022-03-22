@@ -42,7 +42,7 @@ start_time = time.time()
 Mode = enum.IntEnum('Mode', ['normal', 'hurry_up', 'blindfolded_gunslinger'])
 
 # %%
-DEVICE              = 'cuda'
+DEVICE              = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 DO_NOT_UNTAR        = False
 MODE                = Mode.normal
 HURRY_UP_CUTOFF     = 0.25
@@ -116,7 +116,6 @@ KAGGLE
 if KAGGLE:
     # Use kaggle test sets and force GPU + untar resources
     ds_dir       = Path('/kaggle/input/riiid-acp')
-    DEVICE       = 'cuda'
     DO_NOT_UNTAR = False
 else:
     ds_dir       = Path('kaggle_dataset/to_upload')
@@ -732,28 +731,21 @@ if not KAGGLE:
 
 # %%
 """
-Convert models to ONNX before inference
+Function to generate dummy input for Torch
+model to ONNX model conversion
 """
+def generate_dummy_input(is_torch = True):
+    n_read_rows = 0
+    n_predicted_rows = 0
+    n_predicted_rows_by_model_2 = 0
+    flag_ensemble = True
 
-# %%
-import torch.onnx
-
-def convert_model_to_onnx(model, name):
-    # Duplicate generation of input further below to obtain dummy input
-    # for ONNX model export
-    def generate_dummy_input():
-        n_read_rows = 0
-        n_predicted_rows = 0
-        n_predicted_rows_by_model_2 = 0
-        flag_ensemble = True
-
-        Col = None
-        prior_user_ids = None # linter go away
+    Col = None
+    prior_user_ids = None # linter go away
+    pbar = tqdm(env.iter_test())
+    if is_torch:
         all_preds = torch.FloatTensor()
         all_targs = torch.LongTensor()
-
-        pbar = tqdm(env.iter_test())
-
         for test_df, pred_df in pbar:
             if Col is None:
                 Col = enum.IntEnum('Col', test_df.columns.tolist(), start=0)
@@ -836,7 +828,103 @@ def convert_model_to_onnx(model, name):
                         x_cont = x_cont.to(torch.float32)
 
                         return x_mask.clone(), x_cat.clone(), x_cont.clone(), x_tags.clone(), x_tagw.clone()
+    else:
+        all_preds = np.array([])
+        all_targs = np.array([])
+        for test_df, pred_df in pbar:
+            if Col is None:
+                Col = enum.IntEnum('Col', test_df.columns.tolist(), start=0)
 
+            prior_group_answers_correct = np.fromstring(test_df.iloc[0].prior_group_answers_correct[1:-1], dtype=np.int16, sep=',')
+            prior_group_responses       = np.fromstring(test_df.iloc[0].prior_group_responses      [1:-1], dtype=np.int16, sep=',')
+
+            if MODE == Mode.hurry_up and n_read_rows > HURRY_UP_CUTOFF * 2.5e6:
+                preds = np.full((len(test_df),), 0.5)
+            else:
+                if prior_group_responses.size > 0: update_answers(
+                    prior_user_ids,
+                    prior_group_answers_correct,
+                    prior_group_responses,
+                    meta.cat_names,
+                    meta.cont_names,
+                    meta.codes_d,
+                    data.cat_d,
+                    data.cont_d,
+                    users_d,
+                    attempt_num,
+                    attempts_correct
+                )
+
+                prior_user_ids = update_questions(
+                    test_df, 
+                    Col,
+                    meta.cat_names, 
+                    meta.cont_names, 
+                    meta.qc_d, 
+                    meta.lc_d,
+                    meta.codes_d, 
+                    QCols, 
+                    LCols, 
+                    Cats,
+                    Conts, 
+                    data.cat_d, 
+                    data.cont_d, 
+                    data.tags_d, 
+                    data.tagw_d, 
+                    data.last_q_container_id_d,
+                    data.last_ts, 
+                    attempt_num,
+                    attempts_correct,
+                    data.qp_d,
+                    users_d
+                )
+                    
+                # get x
+                a_mask, a_cat, a_cont, a_tags, a_tagw = get_x(
+                    prior_user_ids,
+                    meta.cat_names,
+                    meta.cont_names,
+                    data.cat_d,
+                    data.cont_d,
+                    data.tags_d,
+                    data.tagw_d,
+                    H.chunk_size
+                )
+
+                # Predict
+                if MODE == Mode.blindfolded_gunslinger and n_read_rows < BLIND_CUTOFF * 2.5e6:
+                    preds = np.full((len(test_df),), 0.5)
+                    inference_start_time = time.time()
+                else:
+                    batch_preds1 = np.array([])
+                    if flag_ensemble:
+                        batch_preds2 = np.array([])
+                    for b in range((a_cat.shape[0] + H.bs - 1) // H.bs):
+                        x_mask = a_mask[b*H.bs:(b+1)*H.bs]
+                        x_cat  = a_cat [b*H.bs:(b+1)*H.bs]
+                        x_cont = a_cont[b*H.bs:(b+1)*H.bs]
+                        x_tags = a_tags[b*H.bs:(b+1)*H.bs]
+                        x_tagw = a_tagw[b*H.bs:(b+1)*H.bs]
+
+                        # Normalize x_cont on GPU and take care of nans
+                        x_cont = (x_cont - meta.means) / meta.stds
+                        x_cont[np.isnan(x_cont)] = 0.
+                        x_cont = np.float32(x_cont)
+
+                        return x_mask.copy(), x_cat.copy(), x_cont.copy(), x_tags.copy(), x_tagw.copy()
+
+
+# %%
+"""
+Convert models to ONNX before inference
+"""
+
+# %%
+import torch.onnx
+
+def convert_model_to_onnx(model, name):
+    # Duplicate generation of input further below to obtain dummy input
+    # for ONNX model export
     model.eval()
     dummy_input = generate_dummy_input()
     print("Dummy input:")
@@ -846,21 +934,20 @@ def convert_model_to_onnx(model, name):
         print(tensor.size(), tensor.type())
 
     import os
-    if not os.path.exists(os.path.dirname(os.path.realpath(__file__))+"/{0}_exported.onnx".format(name)):
-        torch.onnx.export(model,
-            args=dummy_input, 
-            f=f"{name}_exported.onnx",
-            export_params=True,  # store the trained parameter weights inside the model file 
-            opset_version=15, 
-            do_constant_folding=True,
-            input_names = ['x_mask', 'x_cat', 'x_cont', 'x_tags', 'x_tagw'],
-            output_names = ['preds'],
-            dynamic_axes={'x_mask' : [0], 'x_cat' : [0], 'x_cont' : [0], 'x_tags' : [0], 'x_tagw' : [0], 'preds': [0]},
-            verbose=True
-        ) 
-        print("Model {0} has been converted to ONNX")
-    else:
-        print("Model {0} already exists".format(name))
+    if os.path.exists(os.path.dirname(os.path.realpath(__file__))+"/{0}_exported.onnx".format(name)):
+        os.remove(os.path.dirname(os.path.realpath(__file__))+"/{0}_exported.onnx".format(name))
+    torch.onnx.export(model,
+        args=dummy_input, 
+        f=f"{name}_exported.onnx",
+        export_params=True,  # store the trained parameter weights inside the model file 
+        opset_version=15, 
+        do_constant_folding=True,
+        input_names = ['x_mask', 'x_cat', 'x_cont', 'x_tags', 'x_tagw'],
+        output_names = ['preds'],
+        dynamic_axes={'x_mask' : [0], 'x_cat' : [0], 'x_cont' : [0], 'x_tags' : [0], 'x_tagw' : [0], 'preds': [0]},
+        verbose=True
+    ) 
+    print("Model {0} has been converted to ONNX".format(name))
 
 convert_model_to_onnx(model1, "model1")
 convert_model_to_onnx(model2, "model2")
@@ -880,11 +967,34 @@ import psutil
 import onnxruntime
 assert 'CUDAExecutionProvider' in onnxruntime.get_available_providers()
 
-ort_session_1 = onnxruntime.InferenceSession("model1_exported.onnx", providers=['CUDAExecutionProvider'])
-ort_session_2 = onnxruntime.InferenceSession("model2_exported.onnx", providers=['CUDAExecutionProvider'])
+so = onnxruntime.SessionOptions()
+so.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
+so.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
+exproviders = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+ort_session_1 = onnxruntime.InferenceSession("model1_exported.onnx", so, providers=exproviders)
+ort_session_2 = onnxruntime.InferenceSession("model2_exported.onnx", so, providers=exproviders)
 
 def to_numpy(tensor):
     return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
+
+model_input_names = [x.name for x in ort_session_1.get_inputs()]
+model_output_name = ort_session_1.get_outputs()[0].name
+
+def run_inferencing_with_io_binding(ort_session, inputs):
+    io_binding = ort_session.io_binding()
+    for i in range(len(inputs)):
+        print("Val", inputs[i])
+        print("Actual Numpy Type", inputs[i].dtype)
+        data = onnxruntime.OrtValue.ortvalue_from_numpy(inputs[i], DEVICE.type, 0)
+        io_binding.bind_input(model_input_names[i], DEVICE, 0, inputs[i].dtype, data.shape(), data.data_ptr())
+    io_binding.bind_output(model_output_name, DEVICE)
+    with torch.no_grad():
+        torch.cuda.synchronize()
+        ort_session.run_with_iobinding(io_binding)
+        torch.cuda.synchronize()
+
+# IO Binding Warm up run
+run_inferencing_with_io_binding(ort_session_1, generate_dummy_input(False))
 
 # %%
 n_read_rows = 0
@@ -987,27 +1097,47 @@ for test_df, pred_df in pbar:
 
                 pred_time_start_1 = time.time()
                 if flag_ensemble:
-                    preds1 = ort_session_1.run(
-                            None,
-                            {
-                                "x_mask": x_mask.copy(),
-                                "x_cat": x_cat.copy(),
-                                "x_cont": x_cont.copy(),
-                                "x_tags": x_tags.copy(),
-                                "x_tagw": x_tagw.copy()
-                            }
-                        )[0]
+                    # preds1 = ort_session_1.run(
+                    #         None,
+                    #         {
+                    #             "x_mask": x_mask.copy(),
+                    #             "x_cat": x_cat.copy(),
+                    #             "x_cont": x_cont.copy(),
+                    #             "x_tags": x_tags.copy(),
+                    #             "x_tagw": x_tagw.copy()
+                    #         }
+                    #     )[0]
+                    preds1 = run_inferencing_with_io_binding(
+                        ort_session_1,
+                        [
+                            x_mask.copy(),
+                            x_cat.copy(),
+                            x_cont.copy(),
+                            x_tags.copy(),
+                            x_tagw.copy()
+                        ]
+                    )[0]
                 else:
-                    preds1 = ort_session_1.run(
-                            None,
-                            {
-                                "x_mask": x_mask,
-                                "x_cat": x_cat,
-                                "x_cont": x_cont,
-                                "x_tags": x_tags,
-                                "x_tagw": x_tagw
-                            }
-                        )[0]
+                    # preds1 = ort_session_1.run(
+                    #         None,
+                    #         {
+                    #             "x_mask": x_mask,
+                    #             "x_cat": x_cat,
+                    #             "x_cont": x_cont,
+                    #             "x_tags": x_tags,
+                    #             "x_tagw": x_tagw
+                    #         }
+                    #     )[0]
+                    preds1 = run_inferencing_with_io_binding(
+                        ort_session_1,
+                        [
+                            x_mask,
+                            x_cat,
+                            x_cont,
+                            x_tags,
+                            x_tagw
+                        ]
+                    )[0]
                 pred_time_end_1 = time.time()
                 if batch_preds1.size > 0:
                     batch_preds1 = np.concatenate([batch_preds1, preds1])
@@ -1016,15 +1146,15 @@ for test_df, pred_df in pbar:
 
                 if flag_ensemble:
                     pred_time_start_2 = time.time()
-                    preds2 = ort_session_2.run(
-                        None,
-                        {
-                            "x_mask": x_mask,
-                            "x_cat": x_cat,
-                            "x_cont": x_cont,
-                            "x_tags": x_tags,
-                            "x_tagw": x_tagw
-                        }
+                    preds2 = run_inferencing_with_io_binding(
+                        ort_session_2,
+                        [
+                            x_mask,
+                            x_cat,
+                            x_cont,
+                            x_tags,
+                            x_tagw
+                        ]
                     )[0]
                     pred_time_end_2 = time.time()
                     if batch_preds2.size > 0:
