@@ -646,10 +646,10 @@ def get_x(user_ids, cat_names, cont_names, hist_cat_d, hist_cont_d, hist_tags_d,
     n_users = len(num_rows_per_uid_d)
 
     # prepare the batch
-    x_mask = np.ones ((n_users, chunk_size), dtype=np.bool)
-    x_cat  = np.zeros((n_users, chunk_size, len(cat_names)),  dtype=np.long)
+    x_mask = np.ones ((n_users, chunk_size), dtype=bool)
+    x_cat  = np.zeros((n_users, chunk_size, len(cat_names)),  dtype=np.int64)
     x_cont = np.full ((n_users, chunk_size, len(cont_names)), np.nan, dtype=np.float32)
-    x_tags = np.zeros((n_users, chunk_size, 6), dtype=np.long)
+    x_tags = np.zeros((n_users, chunk_size, 6), dtype=np.int64)
     x_tagw = np.zeros((n_users, chunk_size, 6), dtype=np.float32)
     
     for i, uid in enumerate(num_rows_per_uid_d.keys()):
@@ -927,11 +927,6 @@ def convert_model_to_onnx(model, name):
     # for ONNX model export
     model.eval()
     dummy_input = generate_dummy_input()
-    print("Dummy input:")
-    print(dummy_input, type(dummy_input), len(dummy_input))
-    print("Dummy input size:")
-    for tensor in dummy_input:
-        print(tensor.size(), tensor.type())
 
     import os
     if os.path.exists(os.path.dirname(os.path.realpath(__file__))+"/{0}_exported.onnx".format(name)):
@@ -983,8 +978,6 @@ model_output_name = ort_session_1.get_outputs()[0].name
 def run_inferencing_with_io_binding(ort_session, inputs):
     io_binding = ort_session.io_binding()
     for i in range(len(inputs)):
-        print("Val", inputs[i])
-        print("Actual Numpy Type", inputs[i].dtype)
         data = onnxruntime.OrtValue.ortvalue_from_numpy(inputs[i], DEVICE.type, 0)
         io_binding.bind_input(model_input_names[i], DEVICE, 0, inputs[i].dtype, data.shape(), data.data_ptr())
     io_binding.bind_output(model_output_name, DEVICE)
@@ -992,6 +985,7 @@ def run_inferencing_with_io_binding(ort_session, inputs):
         torch.cuda.synchronize()
         ort_session.run_with_iobinding(io_binding)
         torch.cuda.synchronize()
+    return io_binding.copy_outputs_to_cpu()
 
 # IO Binding Warm up run
 run_inferencing_with_io_binding(ort_session_1, generate_dummy_input(False))
