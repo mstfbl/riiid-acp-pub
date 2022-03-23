@@ -310,7 +310,7 @@ class InteractionsDataset(Dataset):
         
         padt = (0,pad) if H.pad == 'r' else (pad,0)
         
-        x_mask = np.zeros(x_cat.shape[0], dtype=np.bool)
+        x_mask = np.zeros(x_cat.shape[0], dtype=bool)
         
         x_mask = np.pad(x_mask, padt, constant_values=(True))
         x_cat  = np.pad(x_cat , (padt, (0, 0)), constant_values=(0)).astype(np.int64)
