@@ -780,6 +780,7 @@ def load(learn:Learner,fn,with_opt=False):
 if H.torch_ort:
     from onnxruntime.training.ortmodule import ORTModule, DebugOptions, LogLevel
     import os
+    os.environ['ORTMODULE_FALLBACK_POLICY'] = "FALLBACK_DISABLE"
     os.environ['ORTMODULE_SAVE_ONNX_PATH'] = os.path.dirname(os.path.realpath(__file__))
     print("Encapsulating model with ORTModule")
     debug_options = DebugOptions(save_onnx=True, onnx_prefix="riiid_ort_model_epochs_{0}_gpus_{1}_batch_size_{1}_".format(H.epochs, H.workers, H.bs), log_level=LogLevel.VERBOSE)
