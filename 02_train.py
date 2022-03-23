@@ -715,6 +715,18 @@ model = model.cuda()
 def ranger_lamb(p, lr, mom=0.95, wd=0.01, eps=1e-6, **kwargs):
     return Lookahead(Lamb(p, lr=lr, mom=mom, wd=wd, eps=eps, **kwargs))
 
+# # Add Torch ORT Step
+
+# In[ ]:
+
+if H.torch_ort:
+    from onnxruntime.training.ortmodule import ORTModule, DebugOptions, LogLevel
+    import os
+    os.environ['ORTMODULE_FALLBACK_POLICY'] = "FALLBACK_DISABLE"
+    os.environ['ORTMODULE_SAVE_ONNX_PATH'] = os.path.dirname(os.path.realpath(__file__))
+    print("Encapsulating model with ORTModule")
+    debug_options = DebugOptions(save_onnx=True, onnx_prefix="riiid_ort_model_epochs_{0}_gpus_{1}_batch_size_{1}_".format(H.epochs, H.workers, H.bs), log_level=LogLevel.VERBOSE)
+    model = ORTModule(model, debug_options)
 
 # In[55]:
 
@@ -773,19 +785,6 @@ def load(learn:Learner,fn,with_opt=False):
         return learn
     return rank0_only(__inner, learn, fn, with_opt)
 
-# # Add Torch ORT Step
-
-# In[ ]:
-
-if H.torch_ort:
-    from onnxruntime.training.ortmodule import ORTModule, DebugOptions, LogLevel
-    import os
-    os.environ['ORTMODULE_FALLBACK_POLICY'] = "FALLBACK_DISABLE"
-    os.environ['ORTMODULE_SAVE_ONNX_PATH'] = os.path.dirname(os.path.realpath(__file__))
-    print("Encapsulating model with ORTModule")
-    debug_options = DebugOptions(save_onnx=True, onnx_prefix="riiid_ort_model_epochs_{0}_gpus_{1}_batch_size_{1}_".format(H.epochs, H.workers, H.bs), log_level=LogLevel.VERBOSE)
-    model = ORTModule(model, debug_options)
-
 # # Load model
 
 # In[59]:
@@ -808,7 +807,7 @@ if H.clip:
 
 
 if H.local_rank is not None: 
-    learn.to_distributed(H.local_rank)
+    learn.to_distributed(H.local_rank, sync_bn=False)
     print('local_rank on')
 if H.mixup: 
     learn.add_cb(MyMixUp(0.5))

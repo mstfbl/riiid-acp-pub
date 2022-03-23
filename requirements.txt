@@ -2,3 +2,4 @@ pytorch_block_sparse
 line_profiler
 numba
 joblib
+matplotlib
