@@ -36,6 +36,8 @@ from sklearn.metrics import roc_auc_score
 from torch.distributions.beta import Beta
 from torch.utils.data import Dataset
 
+import sccl
+
 
 # In[2]:
 
@@ -91,6 +93,9 @@ def main(
     globals().update({ 'H' : AttrDict(locals())})
 _H = AttrDict
 
+# # Print versions of certain packages
+print("PyTorch version: ", torch.__version__)
+
 start_time = time.time()
 
 # # Add SCCL Step:
@@ -100,8 +105,8 @@ start_time = time.time()
 def show():
     print()
     print(f"SCCL_CONFIG = {os.environ['SCCL_CONFIG']}")
-    print(f"NCCL_MIN_NCHANNELS = {os.environ['NCCL_MIN_NCHANNELS']}")
-    print(f"NCCL_NET_SHARED_BUFFERS = {os.environ['NCCL_NET_SHARED_BUFFERS']}")
+    # print(f"NCCL_MIN_NCHANNELS = {os.environ['NCCL_MIN_NCHANNELS']}")
+    # print(f"NCCL_NET_SHARED_BUFFERS = {os.environ['NCCL_NET_SHARED_BUFFERS']}")
     print(f"Contents of {os.environ['SCCL_CONFIG']}:")
     with open(os.environ['SCCL_CONFIG']) as f:
         print(f.read())
@@ -109,8 +114,7 @@ def show():
 
 if H.sccl:
     print("Enabling SCCL Distributed computing")
-    import sccl
-    sccl.init('ndv2', 1, (sccl.Collective.alltoall, ('1GB')))
+    sccl.init('ndv4', 1, (sccl.Collective.allreduce, (0, None)))
     show()
 
 
