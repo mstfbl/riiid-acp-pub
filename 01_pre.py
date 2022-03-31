@@ -20,7 +20,7 @@ from tqdm import tqdm
 import argparse
 
 # Must pass args as:
-# --questions_data_path input/questions.csv --lectures_data_path input/lectures.csv --train_data_path input/lectures.csv
+# questions_data_path input/lectures.csv input/lectures.csv
 
 from sys import argv
 
@@ -118,7 +118,7 @@ question_dtypes = {
 }
 
 questions_df = pd.read_csv(
-    in_d / 'questions.csv',
+    Path(questions_data_path),
     usecols=question_dtypes.keys(),
     dtype=question_dtypes,
 )
@@ -210,7 +210,7 @@ lecture_dtypes = {
 }
 
 lectures_df = pd.read_csv(
-    in_d / 'lectures.csv',
+    Path(lectures_data_path),
     usecols=lecture_dtypes.keys(),
     dtype=lecture_dtypes,
 )
@@ -306,7 +306,7 @@ for row in lectures_df.to_numpy():
 # In[28]:
 
 
-get_ipython().run_cell_magic('time', '', "interaction_dtypes = {\n    'row_id': 'int32',\n    'timestamp': 'int64',\n    'user_id': 'int32',\n    'content_id': 'int16',\n    'content_type_id': 'int8',\n    'task_container_id': 'int16',\n    'user_answer': 'int8',\n    'answered_correctly': 'int8',\n    'prior_question_elapsed_time': 'float32',\n    'prior_question_had_explanation': 'boolean'\n}\n\ni_df = pd.read_csv(\n    in_d / 'train.csv', \n    usecols=interaction_dtypes.keys(),\n    dtype=interaction_dtypes,\n    #nrows=10**6,\n)\n\nicats = categorize(i_df, ['task_container_id', 'user_answer', 'answered_correctly', 'prior_question_had_explanation'])")
+get_ipython().run_cell_magic('time', '', "interaction_dtypes = {\n    'row_id': 'int32',\n    'timestamp': 'int64',\n    'user_id': 'int32',\n    'content_id': 'int16',\n    'content_type_id': 'int8',\n    'task_container_id': 'int16',\n    'user_answer': 'int8',\n    'answered_correctly': 'int8',\n    'prior_question_elapsed_time': 'float32',\n    'prior_question_had_explanation': 'boolean'\n}\n\ni_df = pd.read_csv(\n    Path(train_data_path), \n    usecols=interaction_dtypes.keys(),\n    dtype=interaction_dtypes,\n    #nrows=10**6,\n)\n\nicats = categorize(i_df, ['task_container_id', 'user_answer', 'answered_correctly', 'prior_question_had_explanation'])")
 
 
 # In[29]:
