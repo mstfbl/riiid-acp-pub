@@ -17,10 +17,18 @@ from pathlib import Path
 from scipy.sparse import coo_matrix, dok_matrix, lil_matrix, csr_matrix, bsr_matrix
 from tqdm import tqdm
 
+import argparse
+
+# Must pass args as:
+# --questions_data_path input/questions.csv --lectures_data_path input/lectures.csv --train_data_path input/lectures.csv
+
+from sys import argv
+
+script, questions_data_path, lectures_data_path, train_data_path = argv
 
 # # Input path
 # Set this to the location of input .csv files
-
+print("Paths: ", questions_data_path, lectures_data_path, train_data_path)
 # In[2]:
 
 
