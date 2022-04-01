@@ -25,6 +25,7 @@ import argparse
 from sys import argv
 
 script, questions_data_path, lectures_data_path, train_data_path = argv
+questions_data_path, lectures_data_path, train_data_path = Path(questions_data_path), Path(lectures_data_path), Path(train_data_path)
 
 # # Input path
 # Set this to the location of input .csv files
@@ -118,7 +119,7 @@ question_dtypes = {
 }
 
 questions_df = pd.read_csv(
-    Path(questions_data_path),
+    questions_data_path,
     usecols=question_dtypes.keys(),
     dtype=question_dtypes,
 )
@@ -210,7 +211,7 @@ lecture_dtypes = {
 }
 
 lectures_df = pd.read_csv(
-    Path(lectures_data_path),
+    lectures_data_path,
     usecols=lecture_dtypes.keys(),
     dtype=lecture_dtypes,
 )
@@ -306,7 +307,7 @@ for row in lectures_df.to_numpy():
 # In[28]:
 
 
-get_ipython().run_cell_magic('time', '', "interaction_dtypes = {\n    'row_id': 'int32',\n    'timestamp': 'int64',\n    'user_id': 'int32',\n    'content_id': 'int16',\n    'content_type_id': 'int8',\n    'task_container_id': 'int16',\n    'user_answer': 'int8',\n    'answered_correctly': 'int8',\n    'prior_question_elapsed_time': 'float32',\n    'prior_question_had_explanation': 'boolean'\n}\n\ni_df = pd.read_csv(\n    Path(train_data_path), \n    usecols=interaction_dtypes.keys(),\n    dtype=interaction_dtypes,\n    #nrows=10**6,\n)\n\nicats = categorize(i_df, ['task_container_id', 'user_answer', 'answered_correctly', 'prior_question_had_explanation'])")
+get_ipython().run_cell_magic('time', '', "interaction_dtypes = {\n    'row_id': 'int32',\n    'timestamp': 'int64',\n    'user_id': 'int32',\n    'content_id': 'int16',\n    'content_type_id': 'int8',\n    'task_container_id': 'int16',\n    'user_answer': 'int8',\n    'answered_correctly': 'int8',\n    'prior_question_elapsed_time': 'float32',\n    'prior_question_had_explanation': 'boolean'\n}\n\ni_df = pd.read_csv(\n    train_data_path, \n    usecols=interaction_dtypes.keys(),\n    dtype=interaction_dtypes,\n    #nrows=10**6,\n)\n\nicats = categorize(i_df, ['task_container_id', 'user_answer', 'answered_correctly', 'prior_question_had_explanation'])")
 
 
 # In[29]:
